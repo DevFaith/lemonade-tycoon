@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import React from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
 function App() {
   const [lemons, setLemons] = useState(0);
@@ -8,35 +10,89 @@ function App() {
   const [billboard, setBillboard] = useState(false);
   const [autoSeller, setAutoSeller] = useState(false);
   const [iceMachine, setIceMachine] = useState(false);
-const [radioAds, setRadioAds] = useState(false);
-const [franchiseKit, setFranchiseKit] = useState(false);
+  const [radioAds, setRadioAds] = useState(false);
+  const [franchiseKit, setFranchiseKit] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [buyers, setBuyers] = useState([]);
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [feedback, setFeedback] = useState([]);
 
+  useEffect(() => {
+    // Update sales history on buyers change
+    setSalesHistory(prev => [
+      ...prev.slice(-9),
+      { time: new Date().toLocaleTimeString(), amount: buyers }
+    ]);
+  }, [buyers]);
 
-  // 🍋 Buy Lemons
+  const getRandomMood = () => {
+    const moods = ['happy', 'neutral', 'grumpy'];
+    return moods[Math.floor(Math.random() * moods.length)];
+  };
+
+  useEffect(() => {
+    // Update customers every 5 seconds based on upgrades
+    const interval = setInterval(() => {
+      let incoming = 1;
+      if (billboard) incoming += 1;
+      if (radioAds) incoming += 1;
+
+      setCustomers(prev => [
+        ...prev,
+        { id: Date.now(), mood: getRandomMood() }
+      ]);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [billboard, radioAds]);
+
+  useEffect(() => {
+    if (customers.length > 0 && lemons > 0) {
+      const acceptedPrice = price <= 4;
+      const buyers = acceptedPrice ? Math.min(customers.length, lemons) : 0;
+
+      if (buyers > 0) {
+        const earnings = buyers * (radioAds ? price * 1.2 : price);
+        setMoney(prev => prev + earnings);
+        setLemons(prev => prev - buyers);
+      }
+
+      setCustomers([]); // reset after processing
+    }
+  }, [customers, lemons, price]);
+
+  const giveFeedback = (mood, priceAccepted) => {
+    let message = '';
+
+    if (!priceAccepted) {
+      message = 'Too pricey!';
+    } else {
+      message =
+        mood === 'happy' ? 'Yum!' :
+        mood === 'neutral' ? 'Okay lemonade.' :
+        'Could be colder...';
+    }
+
+    setFeedback(prev => [message, ...prev].slice(0, 5)); // Keep last 5 messages
+  };
+
   const buyLemon = () => {
     const cost = iceMachine ? 0.5 : 1;
-  
     if (money >= cost) {
       setLemons(prev => prev + 1);
       setMoney(prev => prev - cost);
     }
   };
-  
 
-  // 💵 Sell Lemonade
   const sellLemonade = () => {
     let lemonadeSold = franchiseKit ? 2 : 1;
-  
     if (lemons >= lemonadeSold) {
       setLemons(lemons - lemonadeSold);
-  
       const earnings = (radioAds ? price * 1.2 : price) * lemonadeSold;
       setMoney(prev => prev + earnings);
     }
   };
-  
 
-  // 🧊 Buy Cooler
   const buyCooler = () => {
     if (!cooler && money >= 15) {
       setCooler(true);
@@ -44,7 +100,6 @@ const [franchiseKit, setFranchiseKit] = useState(false);
     }
   };
 
-  // 📢 Buy Billboard
   const buyBillboard = () => {
     if (!billboard && money >= 30) {
       setBillboard(true);
@@ -52,7 +107,6 @@ const [franchiseKit, setFranchiseKit] = useState(false);
     }
   };
 
-  // 🤖 Buy Auto Seller
   const buyAutoSeller = () => {
     if (!autoSeller && money >= 50) {
       setAutoSeller(true);
@@ -66,23 +120,21 @@ const [franchiseKit, setFranchiseKit] = useState(false);
       setMoney(money - 40);
     }
   };
-  
+
   const buyRadioAds = () => {
     if (!radioAds && money >= 60) {
       setRadioAds(true);
       setMoney(money - 60);
     }
   };
-  
+
   const buyFranchiseKit = () => {
     if (!franchiseKit && money >= 100) {
       setFranchiseKit(true);
       setMoney(money - 100);
     }
   };
-  
 
-  // ⚙️ Passive Income with Auto Seller
   useEffect(() => {
     if (autoSeller) {
       const interval = setInterval(() => {
@@ -91,7 +143,6 @@ const [franchiseKit, setFranchiseKit] = useState(false);
       return () => clearInterval(interval);
     }
   }, [autoSeller, lemons, price]);
-  
 
   return (
     <div className="min-h-screen bg-yellow-50 p-8 text-center">
@@ -125,17 +176,15 @@ const [franchiseKit, setFranchiseKit] = useState(false);
         >
           Sell Lemonade
         </button>
-
         <button onClick={buyIceMachine} disabled={iceMachine} className="bg-blue-300 hover:bg-blue-400 text-white py-2 rounded-xl disabled:opacity-50">
-  {iceMachine ? "Ice Machine: Owned" : "Buy Ice Machine ($40)"}
-</button>
-<button onClick={buyRadioAds} disabled={radioAds} className="bg-purple-400 hover:bg-purple-500 text-white py-2 rounded-xl disabled:opacity-50">
-  {radioAds ? "Radio Ads: Owned" : "Buy Radio Ads ($60)"}
-</button>
-<button onClick={buyFranchiseKit} disabled={franchiseKit} className="bg-red-400 hover:bg-red-500 text-white py-2 rounded-xl disabled:opacity-50">
-  {franchiseKit ? "Franchise Kit: Owned" : "Buy Franchise Kit ($100)"}
-</button>
-
+          {iceMachine ? "Ice Machine: Owned" : "Buy Ice Machine ($40)"}
+        </button>
+        <button onClick={buyRadioAds} disabled={radioAds} className="bg-purple-400 hover:bg-purple-500 text-white py-2 rounded-xl disabled:opacity-50">
+          {radioAds ? "Radio Ads: Owned" : "Buy Radio Ads ($60)"}
+        </button>
+        <button onClick={buyFranchiseKit} disabled={franchiseKit} className="bg-red-400 hover:bg-red-500 text-white py-2 rounded-xl disabled:opacity-50">
+          {franchiseKit ? "Franchise Kit: Owned" : "Buy Franchise Kit ($100)"}
+        </button>
       </div>
 
       <div className="mt-6">
@@ -164,6 +213,18 @@ const [franchiseKit, setFranchiseKit] = useState(false);
           </button>
         </div>
       </div>
+
+      <div className="p-4 bg-white shadow rounded-xl">
+        <p className="text-sm text-gray-500">Customers</p>
+        <h2 className="text-xl font-semibold">{customers.length}</h2>
+      </div>
+
+      <BarChart width={300} height={200} data={salesHistory}>
+        <XAxis dataKey="time" />
+        <YAxis />
+        <Tooltip />
+        <Bar dataKey="amount" fill="#fbbf24" />
+      </BarChart>
 
       <p className="text-sm text-gray-600 mt-4">
         Grow your stand, manage money wisely, and become a lemonade mogul! 🍋📈
